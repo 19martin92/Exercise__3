@@ -61,28 +61,25 @@ private:
 
 		for (int i = 0; i < sourcePointsZero.size(); i++)
 		{
-			x += sourcePointsZero[i];
-			xd += targetPointsZero[i];
+			xd += sourcePointsZero[i];
+			x += targetPointsZero[i];
 		}
 
 		// create A
 		// A = xT * xd
-		Matrix3f A = x*xd.transpose();
-
+		Matrix3f A = xd* x.transpose() ;
 		// jacobi of matrix A
 		JacobiSVD<Matrix3f> svd(A,ComputeFullU| ComputeFullV);
-
+		
 		// R = U*VT
-		Matrix3f R = svd.matrixU() * svd.matrixV();
-
+		Matrix3f R = svd.matrixU() * svd.matrixV().transpose();
 		return R;
 	}
 
 	Vector3f computeTranslation(const Vector3f& sourceMean, const Vector3f& targetMean, const Matrix3f& rotation) {
 		// TODO: Compute the translation vector from source to target opints.
-		Vector3f result = targetMean;
-
-		result -= rotation * sourceMean;
+		Vector3f result = targetMean - sourceMean/2;
+		result = result - rotation* sourceMean;
 
 		return result;
 	}
