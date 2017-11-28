@@ -67,13 +67,13 @@ private:
 
 		// create A
 		// A = xT * xd
-		Matrix3f A = xd*x.transpose();	
+		Matrix3f A = x*xd.transpose();
 
 		// jacobi of matrix A
-		JacobiSVD<Matrix3f> svd(A);
+		JacobiSVD<Matrix3f> svd(A,ComputeFullU| ComputeFullV);
 
 		// R = U*VT
-		Matrix3f R = svd.matrixU() * svd.matrixV().transpose();
+		Matrix3f R = svd.matrixU() * svd.matrixV();
 
 		return R;
 	}
