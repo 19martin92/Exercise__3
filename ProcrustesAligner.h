@@ -66,16 +66,14 @@ private:
 		}
 
 		// create A
-		Matrix3f A = Matrix3f::Identity();
-
 		// A = xT * xd
-		A = x.transpose()*xd;
+		Matrix3f A = xd*x.transpose();	
 
 		// jacobi of matrix A
-		JacobiSVD<Matrix3f> svd(A,ComputeThinU|ComputeThinV);
+		JacobiSVD<Matrix3f> svd(A);
 
 		// R = U*VT
-		Matrix3f R = svd.matrixU() * svd.matrixV();
+		Matrix3f R = svd.matrixU() * svd.matrixV().transpose();
 
 		return R;
 	}
