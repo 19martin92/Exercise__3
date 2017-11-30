@@ -49,27 +49,34 @@ private:
 		std::vector<Vector3f> sourcePointsZero = sourcePoints;
 		std::vector<Vector3f> targetPointsZero = targetPoints;
 
-		for (int i = 0; i < sourcePoints.size(); i++)
+		/*for (int i = 0; i < sourcePoints.size(); i++)
 		{
 			sourcePointsZero[i] -= sourceMean;
 			targetPointsZero[i] -= targetMean;
 		}
-
+		*/
 		// calculate x and xd
-		Vector3f x = Vector3f::Zero();
-		Vector3f xd = Vector3f::Zero();
+		MatrixXf X = MatrixXf(sourcePointsZero.size(), 3);
+		MatrixXf Xd = MatrixXf(sourcePointsZero.size(), 3);
 
 		for (int i = 0; i < sourcePointsZero.size(); i++)
 		{
-			xd += sourcePointsZero[i];
-			x += targetPointsZero[i];
+			//var X
+			X(i, 0)= targetPointsZero[i].x();
+			X(i, 1) = targetPointsZero[i].y();
+			X(i, 2) = targetPointsZero[i].z();
+			// var x_dach
+			Xd(i, 0) = sourcePointsZero[i].x();
+			Xd(i, 1) = sourcePointsZero[i].y();
+			Xd(i, 2) = sourcePointsZero[i].z();
+
 		}
 
 		// create A
 		// A = xT * xd
-		Matrix3f A = xd* x.transpose() ;
+		MatrixXf A = X.transpose() * Xd;
 		// jacobi of matrix A
-		JacobiSVD<Matrix3f> svd(A,ComputeFullU| ComputeFullV);
+		JacobiSVD<MatrixXf> svd(A,ComputeThinU| ComputeThinV);
 		
 		// R = U*VT
 		Matrix3f R = svd.matrixU() * svd.matrixV().transpose();
@@ -78,8 +85,9 @@ private:
 
 	Vector3f computeTranslation(const Vector3f& sourceMean, const Vector3f& targetMean, const Matrix3f& rotation) {
 		// TODO: Compute the translation vector from source to target opints.
-		Vector3f result = targetMean - sourceMean/2;
-		result = result - rotation* sourceMean;
+		//Vector3f result = targetMean
+		//result = result - rotation* sourceMean;
+		Vector3f result = targetMean - (rotation* sourceMean);
 
 		return result;
 	}
