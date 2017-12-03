@@ -110,10 +110,16 @@ public:
 		// class.
 		// Important: Ceres automatically squares the cost function.
 
+		// d(s,t)=||Tps - pt||^2 // square is done by ceres solver -> T*ps - pt
+		PoseIncrement inc = new PoseIncrement(pose);
+
+		inc.apply(m_sourcePoint, m_targetPoint);
+
 		residuals[0] = T(0);
 		residuals[1] = T(0);
 		residuals[2] = T(0);
 
+		free(inc);
 		return true;
 	}
 
