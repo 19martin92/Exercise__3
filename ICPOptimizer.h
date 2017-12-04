@@ -111,15 +111,31 @@ public:
 		// Important: Ceres automatically squares the cost function.
 
 		// d(s,t)=||Tps - pt||^2 // square is done by ceres solver -> T*p_s - p_t
-		auto poseIncrement = PoseIncrement<float>(pose);
+		PoseIncrement<T> poseInc(const_cast<T* const>(pose));
 
-		poseIncrement.apply(m_sourcePoint, m_targetPoint);
+		T* sourcePoint = new T();
+		T* outputPoint = new T();
+		T* difference = new T();
+		T* targetPoint = new T();
 
-		residuals[0] = T(0);
-		residuals[1] = T(0);
-		residuals[2] = T(0);
 
-		free(inc);
+		for (int i = 0; i < 3; i++) {
+			sourcePoint[i] = (T)residuals[i];
+			targetPoint[i] = (T)m_targetPoint(i);
+		}
+
+		poseInc.apply(sourcePoint, outputPoint);
+
+		for (int i = 0; i < 3; i++) 
+		{
+			difference[i] = T(outputPoint[i + 3] - targetPoint[i + 3]);
+		}
+
+		residuals[0] = difference[0] * T(m_weight);
+		residuals[1] = difference[1] * T(m_weight);
+		residuals[2] = difference[2] * T(m_weight);
+
+		
 		return true;
 	}
 
@@ -297,7 +313,11 @@ private:
 
 				// TODO: Create a new point-to-point cost function and add it as constraint (i.e. residual block) 
 				// to the Ceres problem.
-
+				//ceres::CostFunction* cost = PointToPointConstraint::create(sourcePoint, targetPoint, 1.0f);
+				//problem.AddResidualBlock(cost, NULL, poseIncrement.getData());
+				ceres::CostFunction* cost_function = new ceres::AutoDiffCostFunction<PointToPointConstraint, 3, 6>(new PointToPointConstraint(sourcePoint, targetPoint, 1));
+				problem.AddResidualBlock(cost_function, NULL, poseIncrement.getData());
+				//delete cost;
 
 				if (m_bUsePointToPlaneConstraints) {
 					const auto& targetNormal = targetNormals[match.idx];
