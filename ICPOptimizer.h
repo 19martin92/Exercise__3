@@ -110,10 +110,10 @@ public:
 		// class.
 		// Important: Ceres automatically squares the cost function.
 
-		// d(s,t)=||Tps - pt||^2 // square is done by ceres solver -> T*ps - pt
-		PoseIncrement inc = new PoseIncrement(pose);
+		// d(s,t)=||Tps - pt||^2 // square is done by ceres solver -> T*p_s - p_t
+		auto poseIncrement = PoseIncrement<float>(pose);
 
-		inc.apply(m_sourcePoint, m_targetPoint);
+		poseIncrement.apply(m_sourcePoint, m_targetPoint);
 
 		residuals[0] = T(0);
 		residuals[1] = T(0);
@@ -152,6 +152,14 @@ public:
 		// increment (pose parameters) to the source point, you can use the PoseIncrement
 		// class.
 		// Important: Ceres automatically squares the cost function.
+
+		// d(s,t)= (nT*(Tps-pt))^2 -> square done by ceres -> n_t^T * (T*p_s - p_t)
+
+		// initialize poseIncrement
+
+		// apply poseincrement
+
+		// multiply with n
 
 		residuals[0] = T(0);
 		
