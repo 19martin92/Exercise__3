@@ -10,6 +10,7 @@
 #include "SimpleMesh.h"
 #include "NearestNeighbor.h"
 #include "PointCloud.h"
+#include <stdlib.h>
 
 
 /**
@@ -113,14 +114,14 @@ public:
 		// d(s,t)=||Tps - pt||^2 // square is done by ceres solver -> T*p_s - p_t
 		PoseIncrement<T> poseInc(const_cast<T* const>(pose));
 
-		T* sourcePoint = new T();
-		T* outputPoint = new T();
-		T* difference = new T();
-		T* targetPoint = new T();
+		T* sourcePoint = new T[3]();
+		T* outputPoint = new T[3]();
+		T* difference = new T[3]();
+		T* targetPoint = new T[3]();
 
 
 		for (int i = 0; i < 3; i++) {
-			sourcePoint[i] = (T)residuals[i];
+			sourcePoint[i] = (T)m_sourcePoint(i);//residuals[i];
 			targetPoint[i] = (T)m_targetPoint(i);
 		}
 
@@ -128,7 +129,7 @@ public:
 
 		for (int i = 0; i < 3; i++) 
 		{
-			difference[i] = T(outputPoint[i + 3] - targetPoint[i + 3]);
+			difference[i] = T(outputPoint[i] - targetPoint[i]);
 		}
 
 		residuals[0] = difference[0] * T(m_weight);
@@ -136,9 +137,9 @@ public:
 		residuals[2] = difference[2] * T(m_weight);
 
 		
+		delete[] sourcePoint, outputPoint, difference, targetPoint;
 		return true;
 	}
-
 	static ceres::CostFunction* create(const Vector3f& sourcePoint, const Vector3f& targetPoint, const float weight) {
 		return new ceres::AutoDiffCostFunction<PointToPointConstraint, 3, 6>(
 			new PointToPointConstraint(sourcePoint, targetPoint, weight)
@@ -169,15 +170,35 @@ public:
 		// class.
 		// Important: Ceres automatically squares the cost function.
 
-		// d(s,t)= (nT*(Tps-pt))^2 -> square done by ceres -> n_t^T * (T*p_s - p_t)
+		// d(s,t)= (n_t^T*(Tps-pt))^2 -> square done by ceres -> n_t^T * (T*p_s - p_t)
 
 		// initialize poseIncrement
+		PoseIncrement<T> poseInc(const_cast<T* const>(pose));
 
+		T* sourcePoint = new T[3]();
+		T* outputPoint = new T[3]();
+		T* difference = new T[3]();
+		T* targetPoint = new T[3]();
+		T* normals = new T[3]();
+
+
+		for (int i = 0; i < 3; i++) {
+			sourcePoint[i] = (T)m_sourcePoint(i);//residuals[i];
+			targetPoint[i] = (T)m_targetPoint(i);
+			normals[i] = (T)m_targetNormal(i);
+		}
 		// apply poseincrement
+		poseInc.apply(sourcePoint, outputPoint);
 
+		for (int i = 0; i < 3; i++)
+		{
+			difference[i] = T(outputPoint[i] - targetPoint[i]);
+			
+		}
 		// multiply with n
-
-		residuals[0] = T(0);
+		T t = normals[0] * difference[0] + normals[1] * difference[1] + normals[2] * difference[2];
+		
+		residuals[0] = t * T(m_weight);
 		
 		return true;
 	}
@@ -298,7 +319,6 @@ private:
 		options.max_num_iterations = 1;
 		options.num_threads = 8;
 	}
-
 	void prepareConstraints(const std::vector<Vector3f>& sourcePoints, const std::vector<Vector3f>& targetPoints, const std::vector<Vector3f>& targetNormals, const std::vector<Match> matches, const PoseIncrement<double>& poseIncrement, ceres::Problem& problem) const {
 		const unsigned nPoints = sourcePoints.size();
 
@@ -315,9 +335,19 @@ private:
 				// to the Ceres problem.
 				//ceres::CostFunction* cost = PointToPointConstraint::create(sourcePoint, targetPoint, 1.0f);
 				//problem.AddResidualBlock(cost, NULL, poseIncrement.getData());
-				ceres::CostFunction* cost_function = new ceres::AutoDiffCostFunction<PointToPointConstraint, 3, 6>(new PointToPointConstraint(sourcePoint, targetPoint, 1));
-				problem.AddResidualBlock(cost_function, NULL, poseIncrement.getData());
-				//delete cost;
+
+				/*PointToPointConstraint* temp = new PointToPointConstraint(sourcePoint, targetPoint, 1);
+				double* residuals = new double[3];
+				residuals[0] = 0.0;
+				residuals[1] = 0.0;
+				residuals[2] = 0.0;
+				temp-> operator()(poseIncrement.getData(), residuals);*/
+				if (!m_bUsePointToPlaneConstraints) {
+					ceres::CostFunction* cost_function = PointToPointConstraint::create(sourcePoint, targetPoint, 1.0f);//new ceres::AutoDiffCostFunction<PointToPointConstraint, 3, 6>(temp);
+
+					problem.AddResidualBlock(cost_function, NULL, poseIncrement.getData());
+					//delete[] cost_function;// , targetPoint, sourcePoint;
+				}
 
 				if (m_bUsePointToPlaneConstraints) {
 					const auto& targetNormal = targetNormals[match.idx];
@@ -327,6 +357,9 @@ private:
 					 
 					// TODO: Create a new point-to-plane cost function and add it as constraint (i.e. residual block) 
 					// to the Ceres problem.
+					ceres::CostFunction* cost_function = PointToPlaneConstraint::create(sourcePoint, targetPoint, targetNormal, 1.0f);//new ceres::AutoDiffCostFunction<PointToPointConstraint, 3, 6>(temp);
+
+					problem.AddResidualBlock(cost_function, NULL, poseIncrement.getData());
 
 				}
 			}
